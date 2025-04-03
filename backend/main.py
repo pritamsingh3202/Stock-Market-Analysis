@@ -1,65 +1,82 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-import uvicorn
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from data_fetch import get_stock_data, get_market_analysis
 from llm_handler import process_query
 from analytics import analyze_trends
+import traceback
 
-app = FastAPI(title="Stock Market Analysis API")
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
-# Enable CORS with more specific configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
-)
+@app.route('/')
+def root():
+    return jsonify({"message": "Stock Market Analysis API is running"})
 
-class StockQuery(BaseModel):
-    symbol: str
-    query: Optional[str] = None
+@app.route('/test-connection')
+def test_connection():
+    return jsonify({"status": "success", "message": "Backend is connected!"})
 
-@app.get("/")
-async def root():
-    return {"message": "Stock Market Analysis API is running"}
-
-@app.get("/test-connection")
-async def test_connection():
-    return {"status": "success", "message": "Backend is connected!"}
-
-@app.post("/analyze")
-async def analyze_stock(stock_query: StockQuery):
+@app.route('/analyze', methods=['POST'])
+def analyze_stock():
     try:
-        print(f"Received request for symbol: {stock_query.symbol}")
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        symbol = data.get('symbol')
+        query = data.get('query')
+        
+        if not symbol:
+            return jsonify({"error": "Stock symbol is required"}), 400
+            
+        print(f"Received request for symbol: {symbol}")
         
         # Fetch stock data
-        stock_data = get_stock_data(stock_query.symbol)
-        if not stock_data:
-            raise HTTPException(status_code=404, detail="Stock data not found")
+        try:
+            stock_data = get_stock_data(symbol)
+            if stock_data is None or stock_data.empty:
+                return jsonify({"error": "No stock data found for the given symbol"}), 404
+        except Exception as e:
+            print(f"Error fetching stock data: {str(e)}")
+            return jsonify({"error": f"Failed to fetch stock data: {str(e)}"}), 500
 
         # Get market analysis
-        market_analysis = get_market_analysis(stock_query.symbol)
+        try:
+            market_analysis = get_market_analysis(symbol)
+        except Exception as e:
+            print(f"Error fetching market analysis: {str(e)}")
+            market_analysis = {"error": "Failed to fetch market analysis"}
 
         # Process query and get insights
-        analysis_result = process_query(stock_query.query, stock_data)
+        try:
+            analysis_result = process_query(query, stock_data)
+        except Exception as e:
+            print(f"Error processing query: {str(e)}")
+            analysis_result = "Failed to generate analysis"
 
         # Get trends
-        trends = analyze_trends(stock_data)
+        try:
+            trends = analyze_trends(stock_data)
+        except Exception as e:
+            print(f"Error analyzing trends: {str(e)}")
+            trends = {"error": "Failed to analyze trends"}
 
-        return {
-            "stock_data": stock_data.to_dict(),
+        # Convert DataFrame to dict with string dates as keys
+        stock_data_dict = {}
+        for date in stock_data.index:
+            stock_data_dict[date.strftime('%Y-%m-%d')] = stock_data.loc[date].to_dict()
+
+        return jsonify({
+            "stock_data": stock_data_dict,
             "market_analysis": market_analysis,
             "analysis": analysis_result,
             "trends": trends
-        }
+        })
 
     except Exception as e:
         print(f"Error processing request: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
+    app.run(debug=True, port=8000) 

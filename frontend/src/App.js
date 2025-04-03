@@ -34,19 +34,24 @@ function App() {
     setAnalysis(null);
 
     try {
+      if (!symbol.trim()) {
+        throw new Error('Please enter a stock symbol');
+      }
+
       const response = await fetch('http://localhost:8000/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ symbol, query }),
+        body: JSON.stringify({ symbol: symbol.trim(), query: query.trim() }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Analysis request failed');
+        throw new Error(data.error || 'Analysis request failed');
       }
 
-      const data = await response.json();
       setAnalysis(data);
     } catch (err) {
       setError(err.message);
@@ -54,6 +59,16 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatStockData = (stockData) => {
+    if (!stockData) return null;
+    
+    const dates = Object.keys(stockData).sort().reverse();
+    return dates.map(date => ({
+      date,
+      ...stockData[date]
+    }));
   };
 
   return (
@@ -97,7 +112,18 @@ function App() {
           </button>
         </form>
 
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <div className="error">
+            <h3>Error</h3>
+            <p>{error}</p>
+            <p className="error-tip">Please check if:</p>
+            <ul>
+              <li>The stock symbol is correct</li>
+              <li>You have a valid Alpha Vantage API key</li>
+              <li>The backend server is running</li>
+            </ul>
+          </div>
+        )}
 
         {analysis && (
           <div className="analysis-results">
@@ -110,7 +136,32 @@ function App() {
 
             <div className="section">
               <h3>Stock Data</h3>
-              <pre>{JSON.stringify(analysis.stock_data, null, 2)}</pre>
+              <div className="stock-data-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Open</th>
+                      <th>High</th>
+                      <th>Low</th>
+                      <th>Close</th>
+                      <th>Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formatStockData(analysis.stock_data)?.map((row, index) => (
+                      <tr key={index}>
+                        <td>{row.date}</td>
+                        <td>${parseFloat(row['1. open']).toFixed(2)}</td>
+                        <td>${parseFloat(row['2. high']).toFixed(2)}</td>
+                        <td>${parseFloat(row['3. low']).toFixed(2)}</td>
+                        <td>${parseFloat(row['4. close']).toFixed(2)}</td>
+                        <td>{parseInt(row['5. volume']).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="section">

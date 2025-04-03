@@ -1,46 +1,63 @@
 import os
 from dotenv import load_dotenv
-from transformers import pipeline
 import requests
+import pandas as pd
 
 load_dotenv()
 
-# Initialize Hugging Face models
-stock_predictor = pipeline("text2text-generation", model="foduucom/stockmarket-future-prediction")
-market_analyzer = pipeline("text2text-generation", model="bhaskartripathi/GPT_Neo_Market_Analysis")
 
-def process_query(query, stock_data):
-    try:
-        # Format stock data for the model
-        formatted_data = format_stock_data(stock_data)
-        
-        # Generate prediction using stock predictor
-        prediction = stock_predictor(formatted_data + " " + query, max_length=100)
-        
-        # Generate market analysis
-        analysis = market_analyzer(formatted_data + " " + query, max_length=200)
-        
-        return {
-            "prediction": prediction[0]["generated_text"],
-            "analysis": analysis[0]["generated_text"]
-        }
-        
-    except Exception as e:
-        raise Exception(f"Error processing query: {str(e)}")
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 def format_stock_data(stock_data):
-    """Format stock data for LLM input"""
+    """Format stock data for analysis"""
+    if isinstance(stock_data, pd.DataFrame):
+        return stock_data.to_string()
+    return str(stock_data)
+
+def process_query(query, stock_data):
+    """Process the query using DeepSeek"""
     try:
-        latest_data = stock_data.iloc[0]
-        formatted_data = f"""
-        Current Price: ${latest_data['4. close']:.2f}
-        Volume: {int(latest_data['5. volume']):,}
-        High: ${latest_data['2. high']:.2f}
-        Low: ${latest_data['3. low']:.2f}
+       
+        formatted_data = format_stock_data(stock_data)
+        system_message = """You are a financial analyst expert. Analyze the given stock data and provide insights."""
         
-        Recent Price History:
-        {stock_data.head().to_string()}
+        user_message = f"""
+        Stock Data:
+        {formatted_data}
+        
+        Question: {query if query else 'Provide a general analysis of this stock data.'}
         """
-        return formatted_data
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "deepseek-ai/DeepSeek-V3-0324",
+            "messages": [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
+        
+        # Make the API call
+        response = requests.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers=headers,
+            json=data
+        )
+        
+        # Check for errors
+        if response.status_code != 200:
+            error_data = response.json()
+            raise Exception(f"DeepSeek API Error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+        
+        # Extract and return the analysis
+        result = response.json()
+        return result['choices'][0]['message']['content']
+        
     except Exception as e:
-        raise Exception(f"Error formatting stock data: {str(e)}") 
+        print(f"Error in process_query: {str(e)}")
+        return f"Error processing query: {str(e)}" 

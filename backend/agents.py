@@ -63,8 +63,7 @@ def create_analysis_crew(stock_data, user_query):
         # Create the agents
         analyst = create_technical_analyst()
         researcher = create_market_researcher()
-        
-        # Create the tasks
+  
         tasks = create_analysis_tasks(analyst, researcher, stock_data, user_query)
         
         # Create and run the crew
@@ -74,7 +73,6 @@ def create_analysis_crew(stock_data, user_query):
             verbose=True
         )
         
-        # Get the result
         result = crew.kickoff()
         return result
         

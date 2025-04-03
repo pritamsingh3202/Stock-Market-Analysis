@@ -108,11 +108,31 @@ button:disabled {
 }
 
 .error {
-  background-color: #ffebee;
-  color: #c62828;
-  padding: 10px;
+  background-color: #fff3f3;
+  border: 1px solid #ffcdd2;
   border-radius: 4px;
+  padding: 20px;
   margin: 20px 0;
+  color: #d32f2f;
+}
+
+.error h3 {
+  margin-top: 0;
+  color: #d32f2f;
+}
+
+.error-tip {
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.error ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.error li {
+  margin: 5px 0;
 }
 
 .analysis-results {
@@ -249,4 +269,39 @@ h3 {
   .results-display {
     padding: 1rem;
   }
+}
+
+.stock-data-table {
+  overflow-x: auto;
+  margin: 20px 0;
+}
+
+.stock-data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stock-data-table th,
+.stock-data-table td {
+  padding: 12px;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+
+.stock-data-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.stock-data-table td:first-child,
+.stock-data-table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.stock-data-table tr:hover {
+  background-color: #f8f9fa;
 } 

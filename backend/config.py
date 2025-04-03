@@ -3,25 +3,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# API Keys
 ALPHAVANTAGE_API_KEY = os.getenv('ALPHAVANTAGE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# API Endpoints
+
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
 ALPHA_VANTAGE_ANALYTICS_URL = "https://alphavantageapi.co/timeseries/running_analytics"
 
-# Model Configuration
+
 STOCK_PREDICTOR_MODEL = "foduucom/stockmarket-future-prediction"
 MARKET_ANALYZER_MODEL = "bhaskartripathi/GPT_Neo_Market_Analysis"
 
-# Analysis Parameters
+
 DEFAULT_RANGE = "2month"
 DEFAULT_INTERVAL = "DAILY"
 DEFAULT_WINDOW_SIZE = 20
 DEFAULT_CALCULATIONS = ["MEAN", "STDDEV(annualized=True)"]
 
-# Error Messages
+
+
 ERROR_MESSAGES = {
     "api_key_missing": "API key not found in environment variables",
     "data_fetch_error": "Error fetching data from API",
